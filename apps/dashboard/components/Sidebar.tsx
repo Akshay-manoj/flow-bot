@@ -20,8 +20,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { isOpen, close } = useSidebar();
 
-  // If we are on the login page, we don't render the sidebar
-  if (pathname === "/login") {
+  // If we are on the login or landing page, we don't render the sidebar
+  if (pathname === "/" || pathname === "/login") {
     return null;
   }
 
