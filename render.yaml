@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: flowbot-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # Set manually in Render dashboard → value from Neon
+      - key: REDIS_URL
+        sync: false   # Set manually in Render dashboard → value from Upstash
+      - key: JWT_SECRET
+        generateValue: true   # Render auto-generates a secure random string
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: PORT
+        value: 3000
+      - key: CORS_ORIGINS
+        sync: false   # Set to your Vercel dashboard URL + Cloudflare Pages widget URL

@@ -3,6 +3,7 @@ import { AuthModule } from './auth/auth.module';
 import { FlowsModule } from './flows/flows.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { WebsiteModule } from './channels/website/website.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -11,5 +12,6 @@ import { WebsiteModule } from './channels/website/website.module';
     ContactsModule,
     WebsiteModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
