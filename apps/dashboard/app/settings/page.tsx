@@ -86,7 +86,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="lg:ml-[260px] flex-grow flex flex-col min-h-screen bg-slate-50/50">
+    <div className="flex-grow flex flex-col min-h-screen bg-slate-50/50">
       
       {/* Top App Bar */}
       <header className="h-16 flex justify-between items-center px-6 sticky top-0 bg-white border-b border-slate-100 z-40 shrink-0 select-none">

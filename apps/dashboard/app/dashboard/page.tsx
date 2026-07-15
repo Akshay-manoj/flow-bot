@@ -33,7 +33,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="lg:ml-[260px] flex-grow flex flex-col h-screen overflow-hidden bg-slate-50/50">
+    <div className="flex-grow flex flex-col h-screen overflow-hidden bg-slate-50/50">
       <Header onCreateBot={handleCreateBot} />
 
       {showEmptyState ? (

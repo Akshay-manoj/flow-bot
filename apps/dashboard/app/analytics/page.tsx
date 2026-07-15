@@ -96,7 +96,7 @@ export default function AnalyticsPage() {
   const currentData = flowMetrics[selectedFlow] || flowMetrics["Customer Support Onboarding"];
 
   return (
-    <div className="lg:ml-[260px] flex-grow flex flex-col min-h-screen bg-slate-50/50">
+    <div className="flex-grow flex flex-col min-h-screen bg-slate-50/50">
       <Header title="Analytics Overview" />
 
       {/* Analytics Canvas */}

@@ -166,7 +166,7 @@ export default function ContactsPage() {
   });
 
   return (
-    <div className="lg:ml-[260px] flex-grow flex flex-col min-h-screen relative overflow-hidden bg-slate-50/50">
+    <div className="flex-grow flex flex-col min-h-screen relative overflow-hidden bg-slate-50/50">
       <Header title="Contacts CRM" />
 
       {/* Content Canvas */}

@@ -53,7 +53,7 @@ interface Connection {
 }
 
 export default function FlowsPage() {
-  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [leftPanelOpen, setLeftPanelOpen] = useState(false); // closed by default on mobile
   const [bottomTrayOpen, setBottomTrayOpen] = useState(true); // repurposed as right properties sidebar open/close
   const [testPreviewOpen, setTestPreviewOpen] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string>("n3");
@@ -79,6 +79,7 @@ export default function FlowsPage() {
 
   // Canvas container reference
   const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const hasDraggedRef = useRef(false);
 
   // Initial nodes with coordinates as numbers
   const [nodes, setNodes] = useState<Node[]>([
@@ -374,14 +375,14 @@ export default function FlowsPage() {
     setSelectedNodeId(newId);
   };
 
-  // Drag and drop event handlers
+  // Mouse drag event handlers
   const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
     if ((e.target as HTMLElement).closest('button, input, select, textarea, .node-port')) return;
     e.stopPropagation();
     e.preventDefault();
     
     setSelectedNodeId(nodeId);
-    setBottomTrayOpen(true);
+    hasDraggedRef.current = false;
     
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return;
@@ -434,6 +435,10 @@ export default function FlowsPage() {
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    if (window.innerWidth < 768 && leftPanelOpen) {
+      setLeftPanelOpen(false);
+      return;
+    }
     const target = e.target as HTMLElement;
     if (target.classList.contains('canvas-grid') || target.tagName === 'svg' || target.closest('.canvas-container')) {
       setIsPanning(true);
@@ -451,6 +456,7 @@ export default function FlowsPage() {
         y: e.clientY - panStart.y
       });
     } else if (draggingNodeId) {
+      hasDraggedRef.current = true;
       const scale = zoom / 100;
       const container = canvasContainerRef.current;
       if (!container) return;
@@ -498,13 +504,162 @@ export default function FlowsPage() {
     setActiveDragLink(null);
   };
 
+  // Touch event handlers for mobile
+  const handleNodeTouchStart = (e: React.TouchEvent, nodeId: string) => {
+    if ((e.target as HTMLElement).closest('button, input, select, textarea, .node-port')) return;
+    e.stopPropagation();
+    
+    setSelectedNodeId(nodeId);
+    hasDraggedRef.current = false;
+    
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    
+    const scale = zoom / 100;
+    const container = canvasContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    
+    const touch = e.touches[0];
+    const mouseX = (touch.clientX - rect.left - panOffset.x) / scale;
+    const mouseY = (touch.clientY - rect.top - panOffset.y) / scale;
+    
+    setDraggingNodeId(nodeId);
+    setDragStartOffset({
+      x: mouseX - node.left,
+      y: mouseY - node.top
+    });
+  };
+
+  const handlePortTouchStart = (e: React.TouchEvent, fromNodeId: string) => {
+    e.stopPropagation();
+    const fromNode = nodes.find((n) => n.id === fromNodeId);
+    if (!fromNode) return;
+    
+    const startX = fromNode.left + 208;
+    const startY = fromNode.top + (fromNode.type === "start" ? 40 : 55);
+    
+    const touch = e.touches[0];
+    const container = canvasContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const scale = zoom / 100;
+    
+    const currentX = (touch.clientX - rect.left - panOffset.x) / scale;
+    const currentY = (touch.clientY - rect.top - panOffset.y) / scale;
+
+    setActiveDragLink({
+      fromNodeId,
+      startX,
+      startY,
+      currentX,
+      currentY
+    });
+  };
+
+  const handleCanvasTouchStart = (e: React.TouchEvent) => {
+    if (window.innerWidth < 768 && leftPanelOpen) {
+      setLeftPanelOpen(false);
+      return;
+    }
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('canvas-grid') || target.tagName === 'svg' || target.closest('.canvas-container')) {
+      const touch = e.touches[0];
+      setIsPanning(true);
+      setPanStart({
+        x: touch.clientX - panOffset.x,
+        y: touch.clientY - panOffset.y
+      });
+    }
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent) => {
+    if (draggingNodeId || activeDragLink || isPanning) {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    }
+
+    const touch = e.touches[0];
+
+    if (isPanning) {
+      setPanOffset({
+        x: touch.clientX - panStart.x,
+        y: touch.clientY - panStart.y
+      });
+    } else if (draggingNodeId) {
+      hasDraggedRef.current = true;
+      const scale = zoom / 100;
+      const container = canvasContainerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      
+      const mouseX = (touch.clientX - rect.left - panOffset.x) / scale;
+      const mouseY = (touch.clientY - rect.top - panOffset.y) / scale;
+      
+      setNodes((prev) =>
+        prev.map((node) => {
+          if (node.id === draggingNodeId) {
+            return {
+              ...node,
+              left: Math.max(0, Math.round(mouseX - dragStartOffset.x)),
+              top: Math.max(0, Math.round(mouseY - dragStartOffset.y))
+            };
+          }
+          return node;
+        })
+      );
+    } else if (activeDragLink) {
+      const scale = zoom / 100;
+      const container = canvasContainerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      
+      const mouseX = (touch.clientX - rect.left - panOffset.x) / scale;
+      const mouseY = (touch.clientY - rect.top - panOffset.y) / scale;
+      
+      setActiveDragLink((prev) =>
+        prev
+          ? {
+              ...prev,
+              currentX: mouseX,
+              currentY: mouseY
+            }
+          : null
+      );
+    }
+  };
+
+  const handleCanvasTouchEnd = (e: React.TouchEvent) => {
+    if (activeDragLink) {
+      const touch = e.changedTouches[0];
+      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+      const nodePortEl = element?.closest('.node-port');
+      
+      if (nodePortEl) {
+        const toNodeId = nodePortEl.getAttribute('data-node-id');
+        const fromNodeId = activeDragLink.fromNodeId;
+        if (toNodeId && fromNodeId !== toNodeId) {
+          const exists = links.some((l) => l.from === fromNodeId && l.to === toNodeId);
+          if (!exists) {
+            setLinks((prev) => [...prev, { from: fromNodeId, to: toNodeId }]);
+          }
+        }
+      }
+    }
+
+    setIsPanning(false);
+    setDraggingNodeId(null);
+    setActiveDragLink(null);
+  };
+
   const getBezierPath = (startX: number, startY: number, endX: number, endY: number) => {
     const controlOffset = Math.abs(endX - startX) / 2;
     return `M ${startX},${startY} C ${startX + controlOffset},${startY} ${endX - controlOffset},${endY} ${endX},${endY}`;
   };
 
   return (
-    <div className="lg:ml-[260px] flex-grow flex flex-col h-screen overflow-hidden select-none bg-slate-50/30 relative">
+    <div className="flex-grow flex flex-col h-screen overflow-hidden select-none bg-slate-50/30 relative">
       <style jsx global>{`
         .canvas-grid {
           background-size: 20px 20px;
@@ -564,7 +719,7 @@ export default function FlowsPage() {
             >
               <Minus className="w-3.5 h-3.5" />
             </Button>
-            <span className="px-2 text-[10px] font-extrabold text-slate-505 w-10 text-center">{zoom}%</span>
+            <span className="px-2 text-[10px] font-extrabold text-slate-550 w-10 text-center">{zoom}%</span>
             <Button
               variant="ghost"
               size="icon"
@@ -590,11 +745,13 @@ export default function FlowsPage() {
 
       {/* Main Builder Canvas Area */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Left Drawer Panel */}
+        {/* Left Drawer Panel - slides in on mobile overlay, inline on desktop */}
         <aside
           className={cn(
-            "bg-white border-r border-slate-100 flex flex-col z-20 transition-all duration-300 shadow-sm md:flex hidden shrink-0",
-            leftPanelOpen ? "w-64" : "w-12"
+            "bg-white border-r border-slate-100 flex flex-col z-35 transition-all duration-300 shadow-sm shrink-0 absolute md:relative h-full top-0 bottom-0 left-0",
+            leftPanelOpen 
+              ? "w-64 translate-x-0" 
+              : "w-64 -translate-x-full md:translate-x-0 md:w-12"
           )}
         >
           <div className="p-4 border-b border-slate-100 flex justify-between items-center select-none">
@@ -698,7 +855,7 @@ export default function FlowsPage() {
                 onClick={() => addNode("handoff")}
                 className="group flex items-center gap-3.5 p-3.5 bg-slate-50 border border-slate-200/50 rounded-xl cursor-grab hover:bg-white hover:border-primary hover:shadow-md transition-all duration-200"
               >
-                <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-650 border border-rose-100 flex items-center justify-center shrink-0">
                   <UserCheck className="w-4.5 h-4.5" />
                 </div>
                 <div className="flex flex-col">
@@ -717,6 +874,9 @@ export default function FlowsPage() {
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
           onMouseLeave={handleCanvasMouseUp}
+          onTouchStart={handleCanvasTouchStart}
+          onTouchMove={handleCanvasTouchMove}
+          onTouchEnd={handleCanvasTouchEnd}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
@@ -811,8 +971,15 @@ export default function FlowsPage() {
                 <div
                   key={node.id}
                   onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
-                  onMouseUp={(e) => handlePortMouseUp(e, node.id)}
-                  className={`absolute w-52 bg-white border rounded-2xl hover:border-primary/50 hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing z-20 ${
+                  onTouchStart={(e) => handleNodeTouchStart(e, node.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedNodeId(node.id);
+                    if (!hasDraggedRef.current) {
+                      setBottomTrayOpen(true);
+                    }
+                  }}
+                  className={`absolute w-52 bg-white border rounded-2xl hover:border-primary/50 hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing z-25 ${
                     isSelected ? "border-primary ring-4 ring-primary/5" : "border-slate-200/50 shadow-sm"
                   }`}
                   style={{ left: `${node.left}px`, top: `${node.top}px` }}
@@ -834,6 +1001,9 @@ export default function FlowsPage() {
                       {/* Connection output port on start node */}
                       <div
                         onMouseDown={(e) => handlePortMouseDown(e, node.id)}
+                        onTouchStart={(e) => handlePortTouchStart(e, node.id)}
+                        data-node-id={node.id}
+                        data-port-type="output"
                         className="node-port absolute -right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-slate-300 hover:border-primary hover:scale-120 transition-all z-30 cursor-crosshair"
                         title="Drag connection"
                       />
@@ -859,7 +1029,7 @@ export default function FlowsPage() {
                               : node.type === "question"
                               ? "bg-indigo-50 text-indigo-650 border-indigo-100"
                               : node.type === "condition"
-                              ? "bg-amber-50 text-amber-650 border-amber-100"
+                              ? "bg-amber-50 text-amber-655 border-amber-100"
                               : node.type === "api"
                               ? "bg-blue-50 text-blue-600 border-blue-100"
                               : "bg-slate-100 text-slate-600 border-slate-200/50"
@@ -893,11 +1063,16 @@ export default function FlowsPage() {
                       {/* Handles ports */}
                       <div
                         onMouseUp={(e) => handlePortMouseUp(e, node.id)}
+                        data-node-id={node.id}
+                        data-port-type="input"
                         className="node-port absolute -left-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-slate-300 hover:border-primary hover:scale-120 transition-all z-30 cursor-crosshair"
                         title="Connect here"
                       />
                       <div
                         onMouseDown={(e) => handlePortMouseDown(e, node.id)}
+                        onTouchStart={(e) => handlePortTouchStart(e, node.id)}
+                        data-node-id={node.id}
+                        data-port-type="output"
                         className="node-port absolute -right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-slate-300 hover:border-primary hover:scale-120 transition-all z-30 cursor-crosshair"
                         title="Drag connection"
                       />
@@ -907,6 +1082,17 @@ export default function FlowsPage() {
               );
             })}
           </div>
+        </div>
+
+        {/* Floating mobile Nodes Palette toggle button */}
+        <div className="md:hidden fixed bottom-6 left-6 z-30 select-none">
+          <button
+            onClick={() => setLeftPanelOpen(!leftPanelOpen)}
+            className="flex items-center gap-2 bg-white border border-slate-200/50 shadow-xl rounded-full px-5 h-14 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer text-slate-800 font-bold"
+          >
+            <Plus className="w-5 h-5 text-primary" />
+            <span>Add Node</span>
+          </button>
         </div>
 
         {/* Floating Test Bot Launcher Widget */}
@@ -930,7 +1116,7 @@ export default function FlowsPage() {
 
         {/* Chat Preview Panel popup */}
         {testPreviewOpen && (
-          <div className="fixed bottom-0 right-10 w-96 h-[500px] bg-white shadow-2xl rounded-t-2xl border-x border-t border-slate-200/60 z-40 transition-all duration-300 flex flex-col">
+          <div className="fixed bottom-0 right-0 sm:right-10 w-full sm:w-96 h-[500px] bg-white shadow-2xl rounded-t-2xl border-x border-t border-slate-200/60 z-40 transition-all duration-300 flex flex-col">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white rounded-t-2xl select-none">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-primary-fixed">
@@ -938,7 +1124,7 @@ export default function FlowsPage() {
                 </div>
                 <div>
                   <p className="text-xs font-bold leading-none">FlowBot Preview</p>
-                  <p className="text-[9px] text-slate-505 font-semibold mt-1">v2.4.0 • Active Session</p>
+                  <p className="text-[9px] text-slate-550 font-semibold mt-1">v2.4.0 • Active Session</p>
                 </div>
               </div>
               <Button

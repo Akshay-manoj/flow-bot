@@ -246,7 +246,7 @@ export default function ConversationsPage() {
   });
 
   return (
-    <div className="lg:ml-[260px] flex-grow flex flex-col h-screen overflow-hidden bg-slate-50/30">
+    <div className="flex-grow flex flex-col h-screen overflow-hidden bg-slate-50/30">
       <Header title="Live Chat Inbox" />
 
       {/* Inbox Layout Grid */}
