@@ -109,3 +109,4 @@ build/
 
 CLAUDE.md
 dev-elements/*
+.pnpm-store/*
