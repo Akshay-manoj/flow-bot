@@ -17,12 +17,90 @@ import {
   Building,
   UserCheck,
   PlusCircle,
-  Compass,
-  ArrowLeft
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://flow-bot-d075.onrender.com";
+
+// Default template node definitions to seed on complete
+const TEMPLATES: Record<string, { name: string; definition: any }> = {
+  leadgen: {
+    name: "LeadGenBot",
+    definition: {
+      startNode: "n1",
+      nodes: {
+        n1: { type: "message", text: "Hi! Welcome to FlowBot. What is your name? 👋", next: "n2" },
+        n2: { type: "question", saveTo: "name", next: "n3" },
+        n3: { type: "message", text: "Nice to meet you, {{name}}! What is your email?", next: "n4" },
+        n4: { type: "question", saveTo: "email", validation: "email", next: "n5" },
+        n5: { type: "message", text: "Thanks {{name}}, we will be in touch at {{email}}! Have a great day.", next: null }
+      }
+    }
+  },
+  ecommerce: {
+    name: "EcommerceBot",
+    definition: {
+      startNode: "n1",
+      nodes: {
+        n1: { type: "message", text: "Welcome! Are you looking for product recommendations? (Yes/No)", next: "n2" },
+        n2: { type: "question", saveTo: "interest", next: "n3" },
+        n3: { type: "message", text: "Great! Let us know your email to send the recommendation code.", next: "n4" },
+        n4: { type: "question", saveTo: "email", validation: "email", next: "n5" },
+        n5: { type: "message", text: "All set. Check your inbox for product details!", next: null }
+      }
+    }
+  },
+  appointment: {
+    name: "AppointmentBot",
+    definition: {
+      startNode: "n1",
+      nodes: {
+        n1: { type: "message", text: "Hello! What date would you like to schedule your clinic visit? (e.g. Monday)", next: "n2" },
+        n2: { type: "question", saveTo: "appointmentDate", next: "n3" },
+        n3: { type: "message", text: "Please enter your email to confirm the booking.", next: "n4" },
+        n4: { type: "question", saveTo: "email", validation: "email", next: "n5" },
+        n5: { type: "message", text: "Appointment scheduled! We sent a confirmation to {{email}}.", next: null }
+      }
+    }
+  },
+  gov: {
+    name: "SmartGovBot",
+    definition: {
+      startNode: "n1",
+      nodes: {
+        n1: { type: "message", text: "Welcome to Citizen Services. Please state your inquiry.", next: "n2" },
+        n2: { type: "question", saveTo: "inquiry", next: "n3" },
+        n3: { type: "message", text: "Thank you. Please enter your email so we can file ticket reference.", next: "n4" },
+        n4: { type: "question", saveTo: "email", validation: "email", next: "n5" },
+        n5: { type: "message", text: "Your ticket has been logged. An official will reply to {{email}}.", next: null }
+      }
+    }
+  },
+  desk: {
+    name: "VirtualDeskBot",
+    definition: {
+      startNode: "n1",
+      nodes: {
+        n1: { type: "message", text: "Hi, Tier-1 support desk here. What error code are you seeing?", next: "n2" },
+        n2: { type: "question", saveTo: "errorCode", next: "n3" },
+        n3: { type: "message", text: "Got it. Enter your email for helpdesk notifications.", next: "n4" },
+        n4: { type: "question", saveTo: "email", validation: "email", next: "n5" },
+        n5: { type: "message", text: "Our engineering team has been notified. Troubleshooting steps sent to {{email}}.", next: null }
+      }
+    }
+  },
+  scratch: {
+    name: "Blank Canvas Bot",
+    definition: {
+      startNode: "n1",
+      nodes: {
+        n1: { type: "message", text: "Hello! This is a blank starting bot.", next: null }
+      }
+    }
+  }
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,24 +108,133 @@ export default function LoginPage() {
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [selectedChannel, setSelectedChannel] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Input states
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [companyName, setCompanyName] = useState("");
+
+  // Onboarding Step 1 details
+  const [businessName, setBusinessName] = useState("");
+  const [industry, setIndustry] = useState("SaaS & Technology");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setView("onboarding");
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Invalid credentials");
+
+      // Save token & org ID
+      localStorage.setItem("flowbot_token", data.access_token);
+      localStorage.setItem("flowbot_org_id", data.organizationId);
+
+      // Direct to dashboard (since account is already set up)
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setView("onboarding");
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationName: companyName, email, password }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.message || "Registration failed");
+
+      // Save token & org ID
+      localStorage.setItem("flowbot_token", data.access_token);
+      localStorage.setItem("flowbot_org_id", data.organizationId);
+      
+      // Default step 1 business name to company name
+      setBusinessName(companyName);
+
+      // Direct to onboarding wizard
+      setView("onboarding");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const finishOnboarding = () => {
-    router.push("/dashboard");
+  const finishOnboarding = async () => {
+    setLoading(true);
+    setError("");
+
+    const token = localStorage.getItem("flowbot_token");
+    if (!token) {
+      setError("Session expired. Please log in again.");
+      setView("login");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const template = TEMPLATES[selectedTemplate];
+      if (!template) throw new Error("Please select a template");
+
+      // Create flow in DB
+      const res = await fetch(`${API_BASE}/flows`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: template.name,
+          definition: template.definition,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create flow");
+
+      // Publish the newly created flow
+      const publishRes = await fetch(`${API_BASE}/flows/${data.id}/publish`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!publishRes.ok) throw new Error("Failed to publish starter flow");
+
+      // Save onboarding metrics locally if needed
+      localStorage.setItem("flowbot_industry", industry);
+      localStorage.setItem("flowbot_website", websiteUrl);
+      localStorage.setItem("flowbot_channel", selectedChannel);
+
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="gradient-mesh min-h-screen flex items-center justify-center p-6 bg-slate-50/50">
-      {/* Background patterns via custom CSS classes configured in globals.css */}
       <style jsx global>{`
         .gradient-mesh {
           background-color: #FAF9F6;
@@ -56,6 +243,20 @@ export default function LoginPage() {
                             radial-gradient(at 100% 0%, hsla(243, 75%, 59%, 0.05) 0, transparent 50%);
         }
       `}</style>
+
+      {/* Error Toast / Banner */}
+      {error && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] max-w-md w-full bg-red-50 border border-red-200 rounded-xl p-4 shadow-lg flex items-start gap-3 animate-fade-in">
+          <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          <div className="flex-grow">
+            <h4 className="text-xs font-bold text-red-800">Error</h4>
+            <p className="text-xs text-red-700 mt-1 font-medium leading-relaxed">{error}</p>
+          </div>
+          <button className="text-red-500 hover:text-red-700 text-xs font-bold shrink-0" onClick={() => setError("")}>
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {view === "login" && (
         <div className="bg-white border border-slate-200/50 w-full max-w-[420px] rounded-2xl shadow-xl shadow-slate-100/40 p-8 relative overflow-hidden" id="login-card">
@@ -69,13 +270,12 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-4">
-            <h1 className="text-sm font-extrabold text-slate-700 text-center font-sans uppercase tracking-widest select-none">Welcome back</h1>
-            
-            <Button variant="outline" className="w-full flex items-center justify-center gap-2 bg-white border border-slate-200 py-5 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer shadow-none">
+            <h1 className="text-sm font-extrabold text-slate-700 text-center font-sans uppercase tracking-widest select-none font-semibold">Welcome back</h1>
+                      <Button variant="outline" className="w-full flex items-center justify-center gap-2 bg-white border border-slate-200 py-5 rounded-xl hover:bg-slate-55 transition-colors cursor-pointer shadow-none">
               <img
                 alt="Google Logo"
-                className="w-4 h-4"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcD4vwrNrjbGs6CHmRNRkmjW1ba432L4XZ_c3mcr3svsvBXqU1yiqTXWd0WuZreDtmEnvdIftSGOz0rmiE1BurDRnmFKsYv0BXOyoqYTnPJHqI-sd60eo3Lsvns6H_x178hRQ8KgyBKHSZZvj5tZHqVDDQx5j01B6k8j2hsW_GeiedjC5LaOwn3SHfVeJlqqeAw-NUFBy0KJSf1R1k_MAz4Z4x6Nlo6XWKktjyGGoWVzsN1CatG5UcwQ"
+                className="w-4 h-4 shrink-0 object-contain"
+                src="https://www.vectorlogo.zone/logos/google/google-icon.svg"
               />
               <span className="text-xs font-bold text-slate-700">Continue with Google</span>
             </Button>
@@ -94,6 +294,8 @@ export default function LoginPage() {
                   placeholder="name@company.com"
                   required
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">
@@ -108,13 +310,16 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   required
                   type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
               <Button
                 className="w-full bg-primary hover:opacity-90 text-on-primary py-5 rounded-xl font-bold transition-all cursor-pointer shadow-md shadow-primary/10 text-xs"
                 type="submit"
+                disabled={loading}
               >
-                Sign in
+                {loading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
             <p className="text-center text-xs text-slate-400 mt-6 select-none font-semibold">
@@ -139,13 +344,13 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-4">
-            <h1 className="text-sm font-extrabold text-slate-700 text-center font-sans uppercase tracking-widest select-none">Create your account</h1>
+            <h1 className="text-sm font-extrabold text-slate-700 text-center font-sans uppercase tracking-widest select-none font-semibold">Create your account</h1>
             
-            <Button variant="outline" className="w-full flex items-center justify-center gap-2 bg-white border border-slate-200 py-5 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer shadow-none">
+            <Button variant="outline" className="w-full flex items-center justify-center gap-2 bg-white border border-slate-200 py-5 rounded-xl hover:bg-slate-55 transition-colors cursor-pointer shadow-none">
               <img
                 alt="Google Logo"
-                className="w-4 h-4"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5kHJzSe7OyfeG64SR5NYvfaKTeW3_Xel7T1gXc9rttfgoghnE5L-j04JPn2pR1mpJ4S5TpffDKA1yODq5eMOAyb2NaMj09ZgN4h8Le8ASF7elId6IKoh87MRJ2zJngHCWMn8lc_l2HSA3dgOEpISdsVvU4VUIFmnfugzEwaxBAmnjhG1n0UaFL7eKXu1cUWBN-EP3cwrCswIvhok70tc6cMWLI1oFLtR2EPT6uzFXbRg8d_psGdKRsQ"
+                className="w-4 h-4 shrink-0 object-contain"
+                src="https://www.vectorlogo.zone/logos/google/google-icon.svg"
               />
               <span className="text-xs font-bold text-slate-700">Sign up with Google</span>
             </Button>
@@ -164,6 +369,8 @@ export default function LoginPage() {
                   placeholder="Acme Inc."
                   required
                   type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">
@@ -173,6 +380,8 @@ export default function LoginPage() {
                   placeholder="name@company.com"
                   required
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">
@@ -182,13 +391,16 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   required
                   type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
               <Button
                 className="w-full bg-primary hover:opacity-90 text-on-primary py-5 rounded-xl font-bold transition-all cursor-pointer shadow-md shadow-primary/10 text-xs"
                 type="submit"
+                disabled={loading}
               >
-                Create Account
+                {loading ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
             <p className="text-center text-xs text-slate-400 mt-6 select-none font-semibold">
@@ -212,7 +424,7 @@ export default function LoginPage() {
               <div className="flex flex-col items-center gap-2 bg-slate-50/50 px-3">
                 <div
                   className={`w-9 h-9 rounded-full flex items-center justify-center font-bold ring-4 ring-slate-50 transition-all text-xs ${
-                    onboardingStep >= 1 ? "bg-primary text-on-primary shadow-md shadow-primary/10" : "bg-slate-250 text-slate-400"
+                    onboardingStep >= 1 ? "bg-primary text-on-primary shadow-md shadow-primary/10" : "bg-slate-200 text-slate-400"
                   }`}
                 >
                   {onboardingStep > 1 ? <Check className="w-4 h-4" /> : 1}
@@ -266,12 +478,18 @@ export default function LoginPage() {
                       placeholder="Acme Corp"
                       required
                       type="text"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 block">Industry</label>
                     <div className="relative">
-                      <select className="w-full bg-slate-50 border border-slate-200/50 rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary cursor-pointer font-bold text-slate-700 h-10 appearance-none">
+                      <select
+                        className="w-full bg-slate-50 border border-slate-200/50 rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary cursor-pointer font-bold text-slate-700 h-10 appearance-none"
+                        value={industry}
+                        onChange={(e) => setIndustry(e.target.value)}
+                      >
                         <option>SaaS & Technology</option>
                         <option>Ecommerce & Retail</option>
                         <option>Real Estate</option>
@@ -287,6 +505,8 @@ export default function LoginPage() {
                       className="w-full bg-slate-50 border border-slate-200/50 rounded-xl px-4 py-2 text-xs focus-visible:bg-white h-10 font-medium"
                       placeholder="https://example.com"
                       type="url"
+                      value={websiteUrl}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
                     />
                   </div>
                   <Button
@@ -376,7 +596,7 @@ export default function LoginPage() {
                     onClick={() => setSelectedChannel("telegram")}
                   >
                     <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-[#229ED9] shrink-0 shadow-sm">
-                      <Send className="w-5 h-5 text-sky-650" />
+                      <Send className="w-5 h-5 text-sky-600" />
                     </div>
                     <div>
                       <p className="font-bold text-xs text-slate-800">Telegram</p>
@@ -391,13 +611,13 @@ export default function LoginPage() {
                 <div className="flex gap-4 pt-4 select-none">
                   <Button
                     variant="outline"
-                    className="flex-1 border border-slate-200 hover:bg-slate-50 py-5 rounded-xl font-bold cursor-pointer h-9 shadow-none text-slate-700"
+                    className="flex-1 border border-slate-200 hover:bg-slate-50 py-5 rounded-xl font-bold cursor-pointer h-9 shadow-none text-slate-700 text-xs"
                     onClick={() => setOnboardingStep(1)}
                   >
                     Back
                   </Button>
                   <Button
-                    className="flex-1 bg-primary text-on-primary py-5 rounded-xl font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer h-9 shadow-md shadow-primary/10"
+                    className="flex-1 bg-primary text-on-primary py-5 rounded-xl font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer h-9 shadow-md shadow-primary/10 text-xs"
                     onClick={() => setOnboardingStep(3)}
                     disabled={!selectedChannel}
                   >
@@ -442,7 +662,7 @@ export default function LoginPage() {
                     onClick={() => setSelectedTemplate("ecommerce")}
                   >
                     <div className="h-28 bg-amber-500/[0.03] flex items-center justify-center relative select-none">
-                      <ShoppingCart className="text-amber-550 w-10 h-10" />
+                      <ShoppingCart className="text-amber-500 w-10 h-10" />
                     </div>
                     <div className="p-4 bg-white border-t border-slate-100 flex-grow">
                       <h4 className="font-bold text-xs text-slate-800">EcommerceBot</h4>
@@ -458,7 +678,7 @@ export default function LoginPage() {
                     onClick={() => setSelectedTemplate("appointment")}
                   >
                     <div className="h-28 bg-emerald-500/[0.03] flex items-center justify-center relative select-none">
-                      <Calendar className="text-emerald-650 w-10 h-10" />
+                      <Calendar className="text-emerald-555 w-10 h-10" />
                     </div>
                     <div className="p-4 bg-white border-t border-slate-100 flex-grow">
                       <h4 className="font-bold text-xs text-slate-800">AppointmentBot</h4>
@@ -516,17 +736,17 @@ export default function LoginPage() {
                 <div className="flex gap-4 pt-4 select-none animate-fade-in">
                   <Button
                     variant="outline"
-                    className="flex-1 border border-slate-200 hover:bg-slate-50 py-5 rounded-xl font-bold cursor-pointer h-9 shadow-none text-slate-700"
+                    className="flex-1 border border-slate-200 hover:bg-slate-50 py-5 rounded-xl font-bold cursor-pointer h-9 shadow-none text-slate-700 text-xs"
                     onClick={() => setOnboardingStep(2)}
                   >
                     Back
                   </Button>
                   <Button
-                    className="flex-1 bg-primary text-on-primary py-5 rounded-xl font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer h-9 shadow-md shadow-primary/10"
+                    className="flex-1 bg-primary text-on-primary py-5 rounded-xl font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer h-9 shadow-md shadow-primary/10 text-xs"
                     onClick={finishOnboarding}
-                    disabled={!selectedTemplate}
+                    disabled={!selectedTemplate || loading}
                   >
-                    Complete Setup
+                    {loading ? "Seeding templates..." : "Complete Setup"}
                   </Button>
                 </div>
               </div>

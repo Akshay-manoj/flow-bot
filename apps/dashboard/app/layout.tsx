@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Sidebar from "../components/Sidebar";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
-import { SidebarProvider } from "@/lib/sidebar-context";
+import DashboardLayout from "../components/DashboardLayout";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -26,14 +25,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background text-on-background antialiased">
-        <SidebarProvider>
-          <div className="flex min-h-screen">
-            <Sidebar />
-            <main className="flex-1 min-h-screen flex flex-col lg:pl-[260px] max-w-full">
-              {children}
-            </main>
-          </div>
-        </SidebarProvider>
+        <DashboardLayout>{children}</DashboardLayout>
       </body>
     </html>
   );
