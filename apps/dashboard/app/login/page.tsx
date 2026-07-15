@@ -134,7 +134,10 @@ export default function LoginPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Invalid credentials");
+      if (!res.ok) {
+        const errorMsg = Array.isArray(data.message) ? data.message.join(", ") : data.message;
+        throw new Error(errorMsg || "Invalid credentials");
+      }
 
       // Save token & org ID
       localStorage.setItem("flowbot_token", data.access_token);
@@ -162,7 +165,10 @@ export default function LoginPage() {
       });
 
       const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.message || "Registration failed");
+      if (!res.ok || data.error) {
+        const errorMsg = Array.isArray(data.message) ? data.message.join(", ") : data.message;
+        throw new Error(errorMsg || "Registration failed");
+      }
 
       // Save token & org ID
       localStorage.setItem("flowbot_token", data.access_token);
