@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../../prisma.service';
 import { EngineService } from '../../engine/engine.service';
 import { SessionsService } from '../../sessions/sessions.service';
 import { FlowsService } from '../../flows/flows.service';
@@ -26,9 +26,9 @@ import { FlowDefinition, SessionState } from '../../engine/engine.types';
 export class WebsiteGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   private readonly logger = new Logger(WebsiteGateway.name);
-  private prisma = new PrismaClient();
 
   constructor(
+    private prisma: PrismaService,
     private engine: EngineService,
     private sessions: SessionsService,
     private flows: FlowsService,

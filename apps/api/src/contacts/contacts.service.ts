@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class ContactsService {
-  private prisma = new PrismaClient();
+  constructor(private prisma: PrismaService) {}
 
   findAll(organizationId: string) {
     return this.prisma.contact.findMany({

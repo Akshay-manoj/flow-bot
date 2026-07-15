@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma.service';
 import { CreateFlowDto, UpdateFlowDto } from './flows.dto';
 
 @Injectable()
 export class FlowsService {
-  private prisma = new PrismaClient();
+  constructor(private prisma: PrismaService) {}
 
   findAll(organizationId: string) {
     return this.prisma.flow.findMany({
