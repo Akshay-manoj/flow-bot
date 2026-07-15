@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -183,6 +183,53 @@ export default function FlowsPage() {
   const [simNodeId, setSimNodeId] = useState<string | null>(null);
   const [simVariables, setSimVariables] = useState<Record<string, string>>({});
   const [isSimulating, setIsSimulating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load flow from database on mount
+  useEffect(() => {
+    const fetchFlow = async () => {
+      try {
+        const res = await fetch("/api/flows");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.title) setFlowTitle(data.title);
+          if (data.nodes) setNodes(data.nodes);
+          if (data.links) setLinks(data.links);
+          if (data.is_published !== undefined) setIsPublished(data.is_published);
+        }
+      } catch (error) {
+        console.error("Failed to load flow from database:", error);
+      }
+    };
+    fetchFlow();
+  }, []);
+
+  // Save flow to database
+  const saveFlow = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/flows", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: flowTitle,
+          nodes,
+          links,
+          isPublished,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to save flow");
+      }
+      alert("Flow successfully saved to Postgres database!");
+    } catch (err: any) {
+      alert("Error saving flow: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Template variables helper
   const replaceVariables = (text: string, vars: Record<string, string>) => {
@@ -397,8 +444,8 @@ export default function FlowsPage() {
     
     setDraggingNodeId(nodeId);
     setDragStartOffset({
-      x: mouseX - node.left,
-      y: mouseY - node.top
+      x: mouseX - (Number(node.left) || 0),
+      y: mouseY - (Number(node.top) || 0)
     });
   };
 
@@ -408,8 +455,8 @@ export default function FlowsPage() {
     const fromNode = nodes.find((n) => n.id === fromNodeId);
     if (!fromNode) return;
     
-    const startX = fromNode.left + 208;
-    const startY = fromNode.top + (fromNode.type === "start" ? 40 : 55);
+    const startX = (Number(fromNode.left) || 0) + 208;
+    const startY = (Number(fromNode.top) || 0) + (fromNode.type === "start" ? 40 : 55);
     
     setActiveDragLink({
       fromNodeId,
@@ -526,8 +573,8 @@ export default function FlowsPage() {
     
     setDraggingNodeId(nodeId);
     setDragStartOffset({
-      x: mouseX - node.left,
-      y: mouseY - node.top
+      x: mouseX - (Number(node.left) || 0),
+      y: mouseY - (Number(node.top) || 0)
     });
   };
 
@@ -536,8 +583,8 @@ export default function FlowsPage() {
     const fromNode = nodes.find((n) => n.id === fromNodeId);
     if (!fromNode) return;
     
-    const startX = fromNode.left + 208;
-    const startY = fromNode.top + (fromNode.type === "start" ? 40 : 55);
+    const startX = (Number(fromNode.left) || 0) + 208;
+    const startY = (Number(fromNode.top) || 0) + (fromNode.type === "start" ? 40 : 55);
     
     const touch = e.touches[0];
     const container = canvasContainerRef.current;
@@ -654,8 +701,14 @@ export default function FlowsPage() {
   };
 
   const getBezierPath = (startX: number, startY: number, endX: number, endY: number) => {
-    const controlOffset = Math.abs(endX - startX) / 2;
-    return `M ${startX},${startY} C ${startX + controlOffset},${startY} ${endX - controlOffset},${endY} ${endX},${endY}`;
+    // If coordinates are invalid or NaN, fallback to safe coordinate points
+    const sX = isNaN(startX) ? 0 : startX;
+    const sY = isNaN(startY) ? 0 : startY;
+    const eX = isNaN(endX) ? 0 : endX;
+    const eY = isNaN(endY) ? 0 : endY;
+
+    const controlOffset = Math.abs(eX - sX) / 2;
+    return `M ${sX},${sY} C ${sX + controlOffset},${sY} ${eX - controlOffset},${eY} ${eX},${eY}`;
   };
 
   return (
@@ -732,6 +785,17 @@ export default function FlowsPage() {
               <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Publish</span>
               <Switch checked={isPublished} onCheckedChange={setIsPublished} className="cursor-pointer" />
             </div>
+            
+            {/* Real DB Save Action */}
+            <Button
+              onClick={saveFlow}
+              disabled={isSaving}
+              className="h-8 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl px-4 hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <Save className="w-3.5 h-3.5 text-slate-400" />
+              {isSaving ? "Saving..." : "Save Flow"}
+            </Button>
+
             <Button
               onClick={startWorkflow}
               className="h-8 bg-primary text-on-primary text-xs font-bold rounded-xl px-4 hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-primary/10"
@@ -855,7 +919,7 @@ export default function FlowsPage() {
                 onClick={() => addNode("handoff")}
                 className="group flex items-center gap-3.5 p-3.5 bg-slate-50 border border-slate-200/50 rounded-xl cursor-grab hover:bg-white hover:border-primary hover:shadow-md transition-all duration-200"
               >
-                <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-650 border border-rose-100 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
                   <UserCheck className="w-4.5 h-4.5" />
                 </div>
                 <div className="flex flex-col">
@@ -915,10 +979,10 @@ export default function FlowsPage() {
                 const toNode = nodes.find((n) => n.id === link.to);
                 if (!fromNode || !toNode) return null;
 
-                const startX = fromNode.left + 208;
-                const startY = fromNode.top + (fromNode.type === "start" ? 40 : 55);
-                const endX = toNode.left;
-                const endY = toNode.top + 55;
+                const startX = (Number(fromNode.left) || 0) + 208;
+                const startY = (Number(fromNode.top) || 0) + (fromNode.type === "start" ? 40 : 55);
+                const endX = Number(toNode.left) || 0;
+                const endY = (Number(toNode.top) || 0) + 55;
 
                 return (
                   <g key={index} className="group pointer-events-auto">
@@ -967,6 +1031,9 @@ export default function FlowsPage() {
             {/* Render Flow Nodes */}
             {nodes.map((node) => {
               const isSelected = selectedNodeId === node.id;
+              const nodeLeft = Number(node.left) || 0;
+              const nodeTop = Number(node.top) || 0;
+
               return (
                 <div
                   key={node.id}
@@ -982,7 +1049,7 @@ export default function FlowsPage() {
                   className={`absolute w-52 bg-white border rounded-2xl hover:border-primary/50 hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing z-25 ${
                     isSelected ? "border-primary ring-4 ring-primary/5" : "border-slate-200/50 shadow-sm"
                   }`}
-                  style={{ left: `${node.left}px`, top: `${node.top}px` }}
+                  style={{ left: `${nodeLeft}px`, top: `${nodeTop}px` }}
                 >
                   {node.type === "start" ? (
                     <div className="p-4.5 flex flex-col items-center justify-center select-none relative">
@@ -1029,7 +1096,7 @@ export default function FlowsPage() {
                               : node.type === "question"
                               ? "bg-indigo-50 text-indigo-650 border-indigo-100"
                               : node.type === "condition"
-                              ? "bg-amber-50 text-amber-655 border-amber-100"
+                              ? "bg-amber-50 text-amber-650 border-amber-100"
                               : node.type === "api"
                               ? "bg-blue-50 text-blue-600 border-blue-100"
                               : "bg-slate-100 text-slate-600 border-slate-200/50"
@@ -1140,7 +1207,7 @@ export default function FlowsPage() {
               {chatMessages.map((msg, i) => (
                 <div key={i} className={`flex gap-2 max-w-[85%] items-start animate-fade-in ${msg.sender === "user" ? "self-end flex-row-reverse" : "self-start"}`}>
                   {msg.sender === "bot" && (
-                    <div className="w-7 h-7 rounded-full bg-violet-100 border border-violet-200/50 flex items-center justify-center shrink-0 mt-0.5 text-violet-650 select-none shadow-sm">
+                    <div className="w-7 h-7 rounded-full bg-violet-100 border border-violet-200/50 flex items-center justify-center shrink-0 mt-0.5 text-violet-655 select-none shadow-sm">
                       <Bot className="w-4 h-4" />
                     </div>
                   )}
