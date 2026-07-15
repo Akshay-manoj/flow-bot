@@ -139,9 +139,12 @@ export default function LoginPage() {
         throw new Error(errorMsg || "Invalid credentials");
       }
 
-      // Save token & org ID
+      // Save token & org details
       localStorage.setItem("flowbot_token", data.access_token);
       localStorage.setItem("flowbot_org_id", data.organizationId);
+      if (data.organizationName) {
+        localStorage.setItem("flowbot_org_name", data.organizationName);
+      }
 
       // Direct to dashboard (since account is already set up)
       router.push("/dashboard");
@@ -170,9 +173,12 @@ export default function LoginPage() {
         throw new Error(errorMsg || "Registration failed");
       }
 
-      // Save token & org ID
+      // Save token & org details
       localStorage.setItem("flowbot_token", data.access_token);
       localStorage.setItem("flowbot_org_id", data.organizationId);
+      if (data.organizationName) {
+        localStorage.setItem("flowbot_org_name", data.organizationName);
+      }
       
       // Default step 1 business name to company name
       setBusinessName(companyName);

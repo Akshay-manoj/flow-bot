@@ -21,24 +21,28 @@ export class AuthService {
       data: { email: dto.email, passwordHash, organizationId: org.id },
     });
 
-    return this.signToken(user.id, org.id);
+    return this.signToken(user.id, org.id, org.name);
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({ 
+      where: { email: dto.email },
+      include: { organization: true }
+    });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-    return this.signToken(user.id, user.organizationId);
+    return this.signToken(user.id, user.organizationId, user.organization.name);
   }
 
-  private signToken(userId: string, organizationId: string) {
+  private signToken(userId: string, organizationId: string, organizationName: string) {
     const payload = { sub: userId, organizationId };
     return {
       access_token: this.jwt.sign(payload),
       organizationId,
+      organizationName,
     };
   }
 }

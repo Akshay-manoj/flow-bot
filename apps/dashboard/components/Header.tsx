@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Building2,
   ChevronDown,
@@ -27,6 +28,11 @@ interface HeaderProps {
 
 export default function Header({ title, onCreateBot }: HeaderProps) {
   const { toggle } = useSidebar();
+  const [orgName, setOrgName] = useState("Loading...");
+
+  useEffect(() => {
+    setOrgName(localStorage.getItem("flowbot_org_name") || "My Organization");
+  }, []);
 
   return (
     <header className="h-16 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 border-b border-slate-100 sticky top-0 z-40 select-none">
@@ -46,14 +52,14 @@ export default function Header({ title, onCreateBot }: HeaderProps) {
           <DropdownMenuTrigger render={
             <button className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 border border-slate-200/40 rounded-xl transition-all group duration-200 cursor-pointer text-slate-800 font-bold text-xs bg-white outline-none">
               <Building2 className="w-4 h-4 text-primary" />
-              <span>Acme Corp</span>
+              <span>{orgName}</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:translate-y-0.5 transition-transform" />
             </button>
           } />
 
           <DropdownMenuContent align="start" className="w-52 bg-white border border-slate-100 rounded-xl shadow-xl py-1.5 z-50">
             <DropdownMenuItem className="w-full text-left px-4 py-2 text-xs text-slate-800 hover:bg-slate-50 font-bold flex items-center justify-between cursor-pointer">
-              <span>Acme Corp</span>
+              <span>{orgName}</span>
               <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
             </DropdownMenuItem>
             <DropdownMenuItem className="w-full text-left px-4 py-2 text-xs text-slate-500 hover:bg-slate-50 font-medium cursor-pointer">

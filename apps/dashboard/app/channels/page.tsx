@@ -99,7 +99,8 @@ export default function ChannelsPage() {
   ]);
 
   const handleCopyCode = () => {
-    const code = `<script src="https://cdn.flowbot.ai/widget.js" data-token="acme-corp-123" data-color="${brandColor}"></script>`;
+    const orgId = localStorage.getItem("flowbot_org_id") || "demo-token-123";
+    const code = `<script src="https://cdn.flowbot.ai/widget.js" data-token="${orgId}" data-color="${brandColor}"></script>`;
     navigator.clipboard.writeText(code);
     alert("Embed code copied to clipboard!");
   };
