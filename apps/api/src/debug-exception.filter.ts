@@ -15,12 +15,15 @@ export class DebugExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
+    const exceptionResponse: any = exception instanceof HttpException ? exception.getResponse() : null;
+    const message = exceptionResponse?.message || exception.message || 'Internal server error';
+
     const logEntry = {
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
       status,
-      message: exception.message || exception,
+      message: message,
       stack: exception.stack,
     };
 
@@ -29,12 +32,16 @@ export class DebugExceptionFilter implements ExceptionFilter {
       globalLogs.shift(); // keep last 50 logs
     }
 
+    if (status >= 500) {
+      console.error(`[${status}] ${request.method} ${request.url}`, exception.stack);
+    }
+
     response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
-      error: exception.message || 'Internal server error',
-      stack: exception.stack,
+      message: message,
+      error: exceptionResponse?.error || 'Error',
     });
   }
 }
