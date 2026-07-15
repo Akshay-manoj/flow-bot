@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String    @id @default(uuid())
+  name      String
+  apiToken  String    @unique @default(uuid())
+  users     User[]
+  flows     Flow[]
+  contacts  Contact[]
+  createdAt DateTime  @default(now())
+}
+
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  passwordHash   String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  createdAt      DateTime     @default(now())
+}
+
+model Flow {
+  id             String       @id @default(uuid())
+  name           String
+  definition     Json         // the node graph (FlowDefinition JSON)
+  isPublished    Boolean      @default(false)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Contact {
+  id             String       @id @default(uuid())
+  channel        String       // "website" | "telegram" | "whatsapp"
+  externalId     String       // visitor session UUID set by the widget in localStorage
+  variables      Json         @default("{}")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  messages       Message[]
+  createdAt      DateTime     @default(now())
+
+  @@unique([channel, externalId, organizationId])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  contact   Contact  @relation(fields: [contactId], references: [id])
+  contactId String
+  direction String   // "inbound" | "outbound"
+  text      String
+  createdAt DateTime @default(now())
+}
