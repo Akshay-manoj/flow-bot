@@ -7,12 +7,30 @@ export class AuthController {
   constructor(private auth: AuthService) {}
 
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.auth.register(dto);
+  async register(@Body() dto: RegisterDto) {
+    try {
+      return await this.auth.register(dto);
+    } catch (e: any) {
+      return {
+        error: true,
+        message: e.message,
+        stack: e.stack,
+        details: e
+      };
+    }
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto);
+  async login(@Body() dto: LoginDto) {
+    try {
+      return await this.auth.login(dto);
+    } catch (e: any) {
+      return {
+        error: true,
+        message: e.message,
+        stack: e.stack,
+        details: e
+      };
+    }
   }
 }
