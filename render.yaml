@@ -17,6 +17,6 @@ services:
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: PORT
-        value: 3000
+        value: 10000
       - key: CORS_ORIGINS
         sync: false   # Set to your Vercel dashboard URL + Cloudflare Pages widget URL
