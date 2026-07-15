@@ -246,9 +246,9 @@ export default function LoginPage() {
 
       {/* Error Toast / Banner */}
       {error && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] max-w-md w-full bg-red-50 border border-red-200 rounded-xl p-4 shadow-lg flex items-start gap-3 animate-fade-in">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] max-w-[400px] w-[90vw] bg-red-50 border border-red-200 rounded-xl p-4 shadow-lg flex items-start gap-3 animate-fade-in">
           <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-          <div className="flex-grow">
+          <div className="flex-grow min-w-0">
             <h4 className="text-xs font-bold text-red-800">Error</h4>
             <p className="text-xs text-red-700 mt-1 font-medium leading-relaxed">{error}</p>
           </div>

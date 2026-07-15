@@ -14,12 +14,14 @@ async function bootstrap() {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false, transform: true }),
   );
 
-  // CORS — allow dashboard and widget origins
-  const origins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
-    : ['http://localhost:3000', 'http://localhost:3001'];
-
-  app.enableCors({ origin: origins, credentials: true });
+  // CORS — allow all origins dynamically so the widget works on any client website
+  app.enableCors({
+    origin: (origin, callback) => {
+      // Always allow, mirroring the requested origin
+      callback(null, true);
+    },
+    credentials: true,
+  });
 
   const port = parseInt(process.env.PORT || '3000', 10);
   await app.listen(port);
