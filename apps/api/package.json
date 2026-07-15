@@ -1,0 +1,9 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'api dev script not configured'",
+    "build": "echo 'api build script not configured'"
+  }
+}

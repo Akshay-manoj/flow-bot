@@ -1,0 +1,9 @@
+{
+  "name": "widget",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'widget dev script not configured'",
+    "build": "echo 'widget build script not configured'"
+  }
+}

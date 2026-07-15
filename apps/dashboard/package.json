@@ -1,0 +1,9 @@
+{
+  "name": "dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'dashboard dev script not configured'",
+    "build": "echo 'dashboard build script not configured'"
+  }
+}
