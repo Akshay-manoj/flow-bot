@@ -30,6 +30,7 @@ export class HealthController {
         status: dbStatus,
         error: dbError,
       },
+      logs: require('./debug-exception.filter').globalLogs,
     };
   }
 }

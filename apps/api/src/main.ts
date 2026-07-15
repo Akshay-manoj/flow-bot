@@ -2,9 +2,12 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { DebugExceptionFilter } from './debug-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.useGlobalFilters(new DebugExceptionFilter());
 
   // Global validation pipe — strips unknown fields, validates DTOs
   app.useGlobalPipes(
